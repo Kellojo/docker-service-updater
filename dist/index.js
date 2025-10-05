@@ -27272,11 +27272,13 @@ function requireSrc () {
 	const sshHost = core.getInput("ssh-host", { required: true });
 	const sshUser = core.getInput("ssh-user", { required: true });
 	const sshPort = core.getInput("ssh-port", { required: true });
+	const injectSecrets = core.getInput("inject-secrets") === "true";
 
 	core.info(`🔧 Service Name: ${serviceName}`);
 	core.info(`📁 Config Path: ${configPath}`);
 	core.info(`🌍 Remote Project Directory: ${remoteProjectDir}`);
 	core.info(`🔑 SSH Details: ${sshUser}@${sshHost}:${sshPort}`);
+	core.info(`🔐 Inject Secrets: ${injectSecrets}`);
 	core.info("");
 
 	if (!fs.existsSync(configPath)) {
@@ -27304,6 +27306,8 @@ function requireSrc () {
 	  `Changes detected in ${serviceName} configuration. Proceeding with update...`
 	);
 	core.info("");
+
+	injectSecretsIntoLocalFiles();
 
 	// Copy configuration files to remote server via SSH
 	copyConfigFiles(serviceConfig, serviceName, sshPassword);
@@ -27480,6 +27484,30 @@ function requireSrc () {
 
 	  traverse(dirPath);
 	  return files;
+	}
+
+	function injectSecretsIntoLocalFiles() {
+	  if (!injectSecrets) return;
+	  core.info("🔐 Injecting secrets into local configuration files...");
+
+	  const secrets = process.env;
+	  for (const [key, value] of Object.entries(secrets)) {
+	    if (value) {
+	      core.setSecret(value);
+	      const files = getAllFiles(configPath);
+	      files.forEach((file) => {
+	        const content = fs.readFileSync(file, "utf8");
+	        const updatedContent = content.replace(
+	          new RegExp(`\\$\\{\\{ secrets.${key} \\}\\}`, "g"),
+	          value
+	        );
+	        if (content !== updatedContent) {
+	          core.info(`Injected secret ${key} into ${file}`);
+	          fs.writeFileSync(file, updatedContent, "utf8");
+	        }
+	      });
+	    }
+	  }
 	}
 	return src;
 }
