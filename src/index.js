@@ -34,16 +34,46 @@ changedFiles.forEach((file) => core.info(` - ${file}`));
 // Get changed files in the current commit
 function getChangedFiles() {
   try {
-    // Get files changed in the last commit
-    const output = execSync("git diff --name-only HEAD~1 HEAD", {
-      encoding: "utf8",
-    });
+    // First, try to get files changed in the last commit
+    let output;
+    try {
+      output = execSync("git diff --name-only HEAD~1 HEAD", {
+        encoding: "utf8",
+      });
+    } catch (diffError) {
+      // If HEAD~1 doesn't exist, this might be the first commit
+      // Get all files in the current commit instead
+      core.info(
+        "No previous commit found, getting all files in current commit"
+      );
+      output = execSync("git ls-tree --name-only -r HEAD", {
+        encoding: "utf8",
+      });
+    }
+
     return output
       .trim()
       .split("\n")
       .filter((file) => file.length > 0);
   } catch (error) {
     core.warning(`Failed to get changed files: ${error.message}`);
+
+    // Fallback: try to get staged files if we're in a GitHub Actions context
+    try {
+      const stagedFiles = execSync("git diff --cached --name-only", {
+        encoding: "utf8",
+      });
+      if (stagedFiles.trim()) {
+        core.info("Using staged files as fallback");
+        return stagedFiles
+          .trim()
+          .split("\n")
+          .filter((file) => file.length > 0);
+      }
+    } catch (stagedError) {
+      core.warning(`Staged files fallback also failed: ${stagedError.message}`);
+    }
+
     return [];
   }
 }
