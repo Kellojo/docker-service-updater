@@ -251,4 +251,6 @@ function injectSecretsIntoLocalFiles() {
       });
     }
   }
+
+  core.info("");
 }
