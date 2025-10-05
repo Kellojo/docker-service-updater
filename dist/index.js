@@ -27288,49 +27288,96 @@ function requireSrc () {
 	core.info(`📝 Changed files in current commit:`);
 	changedFiles.forEach((file) => core.info(` - ${file}`));
 
-	// Get changed files in the current commit
+	// Get changed files from GitHub event or git diff
 	function getChangedFiles() {
-	  try {
-	    // First, try to get files changed in the last commit
-	    let output;
+	  // First, try to use GitHub event data (most reliable)
+	  const eventPath = process.env.GITHUB_EVENT_PATH;
+	  if (eventPath && fs.existsSync(eventPath)) {
 	    try {
-	      output = execSync("git diff --name-only HEAD~1 HEAD", {
-	        encoding: "utf8",
-	      });
-	    } catch (diffError) {
-	      // If HEAD~1 doesn't exist, this might be the first commit
-	      // Get all files in the current commit instead
-	      core.info(
-	        "No previous commit found, getting all files in current commit"
-	      );
-	      output = execSync("git ls-tree --name-only -r HEAD", {
-	        encoding: "utf8",
-	      });
-	    }
+	      const event = JSON.parse(fs.readFileSync(eventPath, "utf8"));
 
+	      // For push events
+	      if (event.commits && Array.isArray(event.commits)) {
+	        const allChangedFiles = new Set();
+	        event.commits.forEach((commit) => {
+	          if (commit.added)
+	            commit.added.forEach((file) => allChangedFiles.add(file));
+	          if (commit.modified)
+	            commit.modified.forEach((file) => allChangedFiles.add(file));
+	          if (commit.removed)
+	            commit.removed.forEach((file) => allChangedFiles.add(file));
+	        });
+	        if (allChangedFiles.size > 0) {
+	          core.info("Using GitHub event data for changed files");
+	          return Array.from(allChangedFiles);
+	        }
+	      }
+
+	      // For pull request events
+	      if (event.pull_request) {
+	        core.info("Pull request detected, using git diff with base branch");
+	        const baseSha = event.pull_request.base.sha;
+	        const headSha = event.pull_request.head.sha;
+	        try {
+	          const output = execSync(
+	            `git diff --name-only ${baseSha}...${headSha}`,
+	            {
+	              encoding: "utf8",
+	            }
+	          );
+	          return output
+	            .trim()
+	            .split("\n")
+	            .filter((file) => file.length > 0);
+	        } catch (prError) {
+	          core.warning(`PR diff failed: ${prError.message}`);
+	        }
+	      }
+	    } catch (eventError) {
+	      core.warning(`Failed to parse GitHub event: ${eventError.message}`);
+	    }
+	  }
+
+	  // Fallback to git commands
+	  try {
+	    // Try git diff with previous commit
+	    const output = execSync("git diff --name-only HEAD~1 HEAD", {
+	      encoding: "utf8",
+	    });
 	    return output
 	      .trim()
 	      .split("\n")
 	      .filter((file) => file.length > 0);
-	  } catch (error) {
-	    core.warning(`Failed to get changed files: ${error.message}`);
+	  } catch (diffError) {
+	    core.warning(`Git diff failed: ${diffError.message}`);
 
-	    // Fallback: try to get staged files if we're in a GitHub Actions context
-	    try {
-	      const stagedFiles = execSync("git diff --cached --name-only", {
-	        encoding: "utf8",
-	      });
-	      if (stagedFiles.trim()) {
-	        core.info("Using staged files as fallback");
-	        return stagedFiles
+	    // Last resort: try using GitHub environment variables
+	    const beforeSha = process.env.GITHUB_EVENT_BEFORE;
+	    const afterSha = process.env.GITHUB_SHA;
+
+	    if (
+	      beforeSha &&
+	      afterSha &&
+	      beforeSha !== "0000000000000000000000000000000000000000"
+	    ) {
+	      try {
+	        const output = execSync(
+	          `git diff --name-only ${beforeSha}..${afterSha}`,
+	          {
+	            encoding: "utf8",
+	          }
+	        );
+	        core.info("Using GitHub environment variables for diff");
+	        return output
 	          .trim()
 	          .split("\n")
 	          .filter((file) => file.length > 0);
+	      } catch (envError) {
+	        core.warning(`Environment variable diff failed: ${envError.message}`);
 	      }
-	    } catch (stagedError) {
-	      core.warning(`Staged files fallback also failed: ${stagedError.message}`);
 	    }
 
+	    core.warning("All methods failed, returning empty array");
 	    return [];
 	  }
 	}
