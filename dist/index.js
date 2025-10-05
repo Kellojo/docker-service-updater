@@ -27303,6 +27303,7 @@ function requireSrc () {
 	core.info(
 	  `Changes detected in ${serviceName} configuration. Proceeding with update...`
 	);
+	core.info("");
 
 	// Copy configuration files to remote server via SSH
 	copyConfigFiles(serviceConfig, serviceName, sshPassword);
