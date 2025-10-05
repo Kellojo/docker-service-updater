@@ -27269,10 +27269,14 @@ function requireSrc () {
 	});
 	const sshPassword = core.getInput("ssh-password", { required: true });
 	core.setSecret(sshPassword);
+	const sshHost = core.getInput("ssh-host", { required: true });
+	const sshUser = core.getInput("ssh-user", { required: true });
+	const sshPort = core.getInput("ssh-port", { required: true });
 
 	core.info(`🔧 Service Name: ${serviceName}`);
 	core.info(`📁 Config Path: ${configPath}`);
 	core.info(`🌍 Remote Project Directory: ${remoteProjectDir}`);
+	core.info(`🔑 SSH Details: ${sshUser}@${sshHost}:${sshPort}`);
 	core.info("");
 
 	if (!fs.existsSync(configPath)) {
@@ -27303,7 +27307,7 @@ function requireSrc () {
 	);
 
 	// Copy configuration files to remote server via SSH
-	copyConfigFiles(serviceConfig, serviceName);
+	copyConfigFiles(serviceConfig, serviceName, sshPassword);
 
 	// Get changed files from GitHub event or git diff
 	function getChangedFiles() {
@@ -27430,12 +27434,12 @@ function requireSrc () {
 	    core.info(`📤 Copying entire folder to ${remotePath}...`);
 
 	    try {
-	      /*const scpCommand = `sshpass -p "${sshPassword}" scp -r -o StrictHostKeyChecking=no -P 2222 "${serviceConfigPath}/" cicd@cicd-ssh-server:"${remotePath}"`;
+	      const scpCommand = `sshpass -p "${sshPassword}" scp -r -o StrictHostKeyChecking=no -P ${sshPort} "${serviceConfigPath}/" ${sshUser}@${sshHost}:"${remotePath}"`;
 
 	      execSync(scpCommand, {
 	        encoding: "utf8",
 	        stdio: "pipe",
-	      });*/
+	      });
 
 	      core.info(
 	        `✅ Successfully copied configuration folder for ${serviceName}`

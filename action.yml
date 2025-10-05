@@ -17,6 +17,18 @@ inputs:
   ssh-password:
     description: "The SSH password for the remote server."
     required: true
+  ssh-host:
+    description: "The SSH host for the remote server."
+    required: false
+    default: "cicd-ssh-server"
+  ssh-user:
+    description: "The SSH user for the remote server."
+    required: false
+    default: "cicd"
+  ssh-port:
+    description: "The SSH port for the remote server."
+    required: false
+    default: "2222"
 
 runs:
   using: "node20"
