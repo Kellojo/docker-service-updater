@@ -177,11 +177,17 @@ function copyConfigFiles(serviceConfigPath, serviceName, sshPassword) {
     core.info(`📤 Copying entire folder to ${remotePath}...`);
 
     try {
-      const scpCommand = `sshpass -p "${sshPassword}" scp -r -o StrictHostKeyChecking=no -P ${sshPort} "${serviceConfigPath}/" ${sshUser}@${sshHost}:"${remotePath}"`;
+      // Use SSHPASS environment variable for better security and shell compatibility
+      const scpCommand = `scp -r -o StrictHostKeyChecking=no -P ${sshPort} "${serviceConfigPath}/." ${sshUser}@${sshHost}:"${remotePath}/"`;
 
-      execSync(scpCommand, {
+      core.info(
+        `Executing: sshpass scp -r -o StrictHostKeyChecking=no -P ${sshPort} "${serviceConfigPath}/." ${sshUser}@${sshHost}:"${remotePath}/"`
+      );
+
+      execSync(`sshpass -e ${scpCommand}`, {
         encoding: "utf8",
         stdio: "pipe",
+        env: { ...process.env, SSHPASS: sshPassword },
       });
 
       core.info(
