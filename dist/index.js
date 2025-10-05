@@ -27292,18 +27292,16 @@ function requireSrc () {
 	  process.exit(1);
 	}
 
-	core.info(`✅ Found configuration directory for service: ${serviceConfig}`);
+	core.info(`Found configuration directory for service: ${serviceConfig}`);
 
 	const changedFiles = getChangedFiles();
-	core.info(`📝  ${changedFiles.length} Changed files in current commit`);
-
 	if (!changedFiles.some((file) => file.startsWith(serviceConfig))) {
 	  core.info(`ℹ️ No changes detected in ${serviceName} configuration. Exiting.`);
 	  process.exit(0);
 	}
 
 	core.info(
-	  `🚀 Changes detected in ${serviceName} configuration. Proceeding with update...`
+	  `Changes detected in ${serviceName} configuration. Proceeding with update...`
 	);
 
 	// Copy configuration files to remote server via SSH
@@ -27431,8 +27429,6 @@ function requireSrc () {
 	      serviceName
 	    );
 
-	    core.info(`📤 Copying entire folder to ${remotePath}...`);
-
 	    try {
 	      // Use SSHPASS environment variable for better security and shell compatibility
 	      const scpCommand = `scp -r -o StrictHostKeyChecking=no -P ${sshPort} "${serviceConfigPath}/." ${sshUser}@${sshHost}:"${remotePath}/"`;
@@ -27456,10 +27452,6 @@ function requireSrc () {
 	      );
 	      throw copyError;
 	    }
-
-	    core.info(
-	      `🎉 Successfully copied all configuration files for ${serviceName}`
-	    );
 	  } catch (error) {
 	    core.setFailed(`❌ Failed to copy configuration files: ${error.message}`);
 	    throw error;
