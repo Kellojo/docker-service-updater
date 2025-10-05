@@ -42,6 +42,7 @@ core.info(`Found configuration directory for service: ${serviceConfig}`);
 const changedFiles = getChangedFiles();
 if (!changedFiles.some((file) => file.startsWith(serviceConfig))) {
   core.info(`ℹ️ No changes detected in ${serviceName} configuration. Exiting.`);
+  core.setOutput("didUpdate", false);
   process.exit(0);
 }
 
@@ -51,9 +52,9 @@ core.info(
 core.info("");
 
 injectSecretsIntoLocalFiles();
-
-// Copy configuration files to remote server via SSH
 copyConfigFiles(serviceConfig, serviceName, sshPassword);
+
+core.setOutput("didUpdate", true);
 
 // Get changed files from GitHub event or git diff
 function getChangedFiles() {

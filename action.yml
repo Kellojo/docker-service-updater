@@ -37,6 +37,10 @@ inputs:
     required: false
     default: "2222"
 
+outputs:
+  didUpdate:
+    description: "Indicates whether the service was updated or not."
+
 runs:
   using: "node20"
   main: "dist/index.js"
