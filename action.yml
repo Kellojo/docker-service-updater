@@ -11,7 +11,7 @@ inputs:
     required: true
     default: "./config"
 
-  injectSecrets:
+  inject-secrets:
     description: "Whether to inject secrets from GitHub Secrets into the config files. Secrets are injected by replacing placeholders in the format ${{ secrets.SECRET_NAME }} with the corresponding secret value."
     required: false
     default: "false"
