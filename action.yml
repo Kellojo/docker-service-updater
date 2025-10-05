@@ -10,6 +10,13 @@ inputs:
     description: "The directory where the service folders are located. The service folders must be named exactly like the service names in the docker-compose file."
     required: true
     default: "./config"
+  remote-project-dir:
+    description: "The directory on the remote server where project is located."
+    required: true
+    default: "/homelab"
+  ssh-password:
+    description: "The SSH password for the remote server."
+    required: true
 
 runs:
   using: "node20"

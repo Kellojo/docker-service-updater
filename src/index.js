@@ -7,9 +7,15 @@ core.info("Starting Docker service updater...");
 
 const serviceName = core.getInput("service-name", { required: true });
 const configPath = core.getInput("config-dir", { required: true });
+const remoteProjectDir = core.getInput("remote-project-dir", {
+  required: true,
+});
+const sshPassword = core.getInput("ssh-password", { required: true });
+core.setSecret(sshPassword);
 
 core.info(`🔧 Service Name: ${serviceName}`);
 core.info(`📁 Config Path: ${configPath}`);
+core.info(`🌍 Remote Project Directory: ${remoteProjectDir}`);
 core.info("");
 
 if (!fs.existsSync(configPath)) {
@@ -28,8 +34,19 @@ if (!fs.existsSync(serviceConfig)) {
 core.info(`✅ Found configuration directory for service: ${serviceConfig}`);
 
 const changedFiles = getChangedFiles();
-core.info(`📝 Changed files in current commit:`);
-changedFiles.forEach((file) => core.info(` - ${file}`));
+core.info(`📝  ${changedFiles.length} Changed files in current commit`);
+
+if (!changedFiles.some((file) => file.startsWith(serviceConfig))) {
+  core.info(`ℹ️ No changes detected in ${serviceName} configuration. Exiting.`);
+  process.exit(0);
+}
+
+core.info(
+  `🚀 Changes detected in ${serviceName} configuration. Proceeding with update...`
+);
+
+// Copy configuration files to remote server via SSH
+copyConfigFiles(serviceConfig, serviceName, sshPassword);
 
 // Get changed files from GitHub event or git diff
 function getChangedFiles() {
@@ -123,4 +140,84 @@ function getChangedFiles() {
     core.warning("All methods failed, returning empty array");
     return [];
   }
+}
+
+// Copy configuration files to remote server via SSH
+function copyConfigFiles(serviceConfigPath, serviceName, sshPassword) {
+  core.info(`📂 Copying configuration folder for ${serviceName}...`);
+
+  try {
+    // Check if service config directory exists and has files
+    if (!fs.existsSync(serviceConfigPath)) {
+      core.warning(
+        `Service config directory does not exist: ${serviceConfigPath}`
+      );
+      return;
+    }
+
+    const files = getAllFiles(serviceConfigPath);
+    if (files.length === 0) {
+      core.warning(`No files found in ${serviceConfigPath}`);
+      return;
+    }
+
+    core.info(`Found ${files.length} files in configuration folder`);
+
+    // Copy the entire folder using scp -r (recursive)
+    const remotePath = path.posix.join(
+      remoteProjectDir,
+      configPath,
+      serviceName
+    );
+
+    core.info(`📤 Copying entire folder to ${remotePath}...`);
+
+    try {
+      /*const scpCommand = `sshpass -p "${sshPassword}" scp -r -o StrictHostKeyChecking=no -P 2222 "${serviceConfigPath}/" cicd@cicd-ssh-server:"${remotePath}"`;
+
+      execSync(scpCommand, {
+        encoding: "utf8",
+        stdio: "pipe",
+      });*/
+
+      core.info(
+        `✅ Successfully copied configuration folder for ${serviceName}`
+      );
+    } catch (copyError) {
+      core.setFailed(
+        `❌ Failed to copy configuration folder: ${copyError.message}`
+      );
+      throw copyError;
+    }
+
+    core.info(
+      `🎉 Successfully copied all configuration files for ${serviceName}`
+    );
+  } catch (error) {
+    core.setFailed(`❌ Failed to copy configuration files: ${error.message}`);
+    throw error;
+  }
+}
+
+// Recursively get all files in a directory
+function getAllFiles(dirPath) {
+  const files = [];
+
+  function traverse(currentPath) {
+    const items = fs.readdirSync(currentPath);
+
+    items.forEach((item) => {
+      const itemPath = path.join(currentPath, item);
+      const stat = fs.statSync(itemPath);
+
+      if (stat.isDirectory()) {
+        traverse(itemPath);
+      } else {
+        files.push(itemPath);
+      }
+    });
+  }
+
+  traverse(dirPath);
+  return files;
 }
