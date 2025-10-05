@@ -1,0 +1,16 @@
+name: "Docker Service Updater"
+description: "A GitHub action that updates a docker compose service, based on file changes in your repository. The services are only updated/restarted, if any of their files actually changed."
+author: "Kellojo"
+
+inputs:
+  service-name:
+    description: "The name of the service to update"
+    required: true
+  config-dir:
+    description: "The directory where the service folders are located. The service folders must be named exactly like the service names in the docker-compose file."
+    required: true
+    default: "./config"
+
+runs:
+  using: "node20"
+  main: "dist/index.js"
